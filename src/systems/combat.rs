@@ -1,6 +1,7 @@
 use hecs::World;
 
 use crate::components::{Ant, AntRole, AntState, ColonyMember, Dead, Fighter, Position};
+use crate::spatial::SpatialGrid;
 use crate::systems::pheromone::{PheromoneGrid, PheromoneType};
 
 /// Base damage for combat
@@ -10,7 +11,7 @@ const BASE_DAMAGE: u8 = 10;
 const COMBAT_INTERVAL: u64 = 5;
 
 /// Combat system - ants from different colonies fight when adjacent
-pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64) {
+pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64, spatial_grid: &SpatialGrid) {
     if tick % COMBAT_INTERVAL != 0 {
         return;
     }
@@ -33,18 +34,25 @@ pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u6
         combatants.push((entity, pos.x, pos.y, member.colony_id, ant.role, strength));
     }
 
-    // Find adjacent enemies and resolve combat
+    // Find adjacent enemies using spatial grid and resolve combat
     let mut damage_to_apply: Vec<(hecs::Entity, u8, u8)> = Vec::new(); // entity, damage, attacker_colony
     let mut danger_deposits: Vec<(i32, i32, u8)> = Vec::new();
+    let mut processed_pairs: Vec<(hecs::Entity, hecs::Entity)> = Vec::new();
 
-    for i in 0..combatants.len() {
-        let (entity_a, x_a, y_a, colony_a, role_a, strength_a) = combatants[i];
-
-        for j in (i + 1)..combatants.len() {
-            let (entity_b, x_b, y_b, colony_b, role_b, strength_b) = combatants[j];
-
+    for &(entity_a, x_a, y_a, colony_a, role_a, strength_a) in &combatants {
+        for (entity_b, x_b, y_b, colony_b) in spatial_grid.query_nearby(x_a, y_a) {
             // Skip same colony
             if colony_a == colony_b {
+                continue;
+            }
+
+            // Skip if we already processed this pair (avoid double-counting)
+            let pair = if entity_a < entity_b {
+                (entity_a, entity_b)
+            } else {
+                (entity_b, entity_a)
+            };
+            if processed_pairs.contains(&pair) {
                 continue;
             }
 
@@ -54,16 +62,21 @@ pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u6
                 continue;
             }
 
-            // Combat! Each deals damage to the other
-            let damage_a = calculate_damage(strength_a, role_a);
-            let damage_b = calculate_damage(strength_b, role_b);
+            // Find entity_b's combat stats from combatants list
+            if let Some(&(_, _, _, _, role_b, strength_b)) = combatants.iter().find(|(e, _, _, _, _, _)| *e == entity_b) {
+                // Combat! Each deals damage to the other
+                let damage_a = calculate_damage(strength_a, role_a);
+                let damage_b = calculate_damage(strength_b, role_b);
 
-            damage_to_apply.push((entity_b, damage_a, colony_a));
-            damage_to_apply.push((entity_a, damage_b, colony_b));
+                damage_to_apply.push((entity_b, damage_a, colony_a));
+                damage_to_apply.push((entity_a, damage_b, colony_b));
 
-            // Deposit danger pheromones
-            danger_deposits.push((x_a, y_a, colony_a));
-            danger_deposits.push((x_b, y_b, colony_b));
+                // Deposit danger pheromones
+                danger_deposits.push((x_a, y_a, colony_a));
+                danger_deposits.push((x_b, y_b, colony_b));
+
+                processed_pairs.push(pair);
+            }
         }
     }
 

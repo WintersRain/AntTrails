@@ -12,8 +12,10 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 use crate::camera::Camera;
 use crate::colony::ColonyState;
+use crate::components::{Ant, ColonyMember, Position};
 use crate::input::Command;
 use crate::render::render_frame;
+use crate::spatial::SpatialGrid;
 use crate::systems;
 use crate::systems::pheromone::PheromoneGrid;
 use crate::systems::water::{RainEvent, WaterGrid};
@@ -34,6 +36,7 @@ pub struct App {
     camera: Camera,
     pheromones: PheromoneGrid,
     water: WaterGrid,
+    spatial_grid: SpatialGrid,
     rain_event: Option<RainEvent>,
     running: bool,
     paused: bool,
@@ -78,6 +81,9 @@ impl App {
         // Ensure queens have Age component
         systems::lifecycle::ensure_queen_ages(&mut world);
 
+        // Initialize spatial grid for neighbor lookups
+        let spatial_grid = SpatialGrid::new(terrain.width, terrain.height, 8);
+
         // Center camera on first colony's queen
         let camera = Camera::new(0, terrain.height as i32 / 5 - 5);
 
@@ -89,6 +95,7 @@ impl App {
             camera,
             pheromones,
             water,
+            spatial_grid,
             rain_event: None,
             running: true,
             paused: false,
@@ -149,6 +156,14 @@ impl App {
         for _ in 0..ticks_this_frame {
             self.tick += 1;
 
+            // Rebuild spatial grid for this tick
+            self.spatial_grid.clear();
+            for (entity, (pos, _ant, member)) in
+                self.world.query::<(&Position, &Ant, &ColonyMember)>().iter()
+            {
+                self.spatial_grid.insert(entity, pos.x, pos.y, member.colony_id);
+            }
+
             // === Phase 1: AI & State Updates ===
 
             // Dig AI decides what ants should do
@@ -181,7 +196,7 @@ impl App {
             systems::food::check_deposit(&mut self.world, &self.colonies);
 
             // Combat (every 5 ticks)
-            systems::combat::combat_system(&mut self.world, &mut self.pheromones, self.tick);
+            systems::combat::combat_system(&mut self.world, &mut self.pheromones, self.tick, &self.spatial_grid);
 
             // Aphid farming
             systems::aphid::aphid_system(&mut self.world, &mut self.colonies);
