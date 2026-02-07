@@ -42,4 +42,14 @@
 
 ## Traceability
 
-(Updated by roadmapper)
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FIX-01 | Phase 1: Unfreeze & Activate | Pending |
+| FIX-02 | Phase 1: Unfreeze & Activate | Pending |
+| FIX-03 | Phase 2: Pheromone Communication | Pending |
+| FIX-04 | Phase 1: Unfreeze & Activate | Pending |
+| AI-01 | Phase 4: Utility AI Core | Pending |
+| AI-02 | Phase 5: Emergent Specialization | Pending |
+| AI-03 | Phase 6: Colony Intelligence | Pending |
+| POL-01 | Phase 3: Config Centralization | Pending |
+| POL-02 | Phase 7: Debug & Tuning Dashboard | Pending |
