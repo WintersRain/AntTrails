@@ -12,7 +12,7 @@ Transform AntTrails from a compiling-but-frozen ant colony simulator into a livi
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Unfreeze & Activate** - Wire orphaned movement code, tune activity rates, add spatial hashing so ants visibly move and interact
+- [x] **Phase 1: Unfreeze & Activate** - Wire orphaned movement code, tune activity rates, add spatial hashing so ants visibly move and interact
 - [ ] **Phase 2: Pheromone Communication** - Fix pheromone saturation/decay balance and wire gradient following so visible ant trails form
 - [ ] **Phase 3: Config Centralization** - Gather 20+ scattered magic constants into a single tunable config before adding more systems
 - [ ] **Phase 4: Utility AI Core** - Replace dice-roll state transitions with context-aware scoring so ants make situational decisions
@@ -35,9 +35,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md -- Wire orphaned movement functions and eliminate wildcard state matches
-- [ ] 01-02-PLAN.md -- Tune activity probabilities and validate ant liveliness
-- [ ] 01-03-PLAN.md -- Implement spatial hash grid for O(1) neighbor lookups
+- [x] 01-01-PLAN.md -- Wire orphaned movement functions and eliminate wildcard state matches
+- [x] 01-02-PLAN.md -- Tune activity probabilities and validate ant liveliness
+- [x] 01-03-PLAN.md -- Implement spatial hash grid for O(1) neighbor lookups
 
 ### Phase 2: Pheromone Communication
 **Goal**: Ants lay and follow pheromone trails that form visible paths between food sources and colonies -- the foundation of stigmergic intelligence
@@ -145,7 +145,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Unfreeze & Activate | 0/3 | Not started | - |
+| 1. Unfreeze & Activate | 3/3 | Complete | 2026-02-07 |
 | 2. Pheromone Communication | 0/3 | Not started | - |
 | 3. Config Centralization | 0/2 | Not started | - |
 | 4. Utility AI Core | 0/5 | Not started | - |
