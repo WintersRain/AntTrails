@@ -32,7 +32,7 @@ pub fn movement_system(
             AntState::Digging => dig_movement(pos, terrain),
             AntState::Returning => climb_movement(pos, terrain),
             AntState::Idle => {
-                if fastrand::u8(..) < 10 {
+                if fastrand::u8(..) < 90 {
                     random_movement()
                 } else {
                     (0, 0)
