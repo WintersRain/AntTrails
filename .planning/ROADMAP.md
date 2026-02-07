@@ -48,12 +48,12 @@ Plans:
   2. Ants arriving at a pheromone gradient visibly turn toward the stronger signal rather than walking randomly
   3. Pheromone trails decay over time -- abandoned trails fade while active trails persist, creating meaningful gradients
   4. Different pheromone types (food, home, danger) decay at different rates appropriate to their purpose
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Implement adaptive pheromone deposit rates and tau_min/tau_max clamping
-- [ ] 02-02: Wire pheromone gradient following into the movement system
-- [ ] 02-03: Tune decay rates per pheromone type and validate trail formation
+- [ ] 02-01-PLAN.md -- Rewrite pheromone core: adaptive deposit, per-tick type-specific decay, diffusion, weighted gradient
+- [ ] 02-02-PLAN.md -- Wire pheromone system into game loop and lower foraging detection threshold
+- [ ] 02-03-PLAN.md -- Add pheromone trail visualization with toggle key and validate trail formation
 
 ### Phase 3: Config Centralization
 **Goal**: All behavioral constants live in one place so tuning ant behavior is a config edit, not a codebase scavenger hunt
@@ -146,7 +146,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Unfreeze & Activate | 3/3 | Complete | 2026-02-07 |
-| 2. Pheromone Communication | 0/3 | Not started | - |
+| 2. Pheromone Communication | 0/3 | Planned | - |
 | 3. Config Centralization | 0/2 | Not started | - |
 | 4. Utility AI Core | 0/5 | Not started | - |
 | 5. Emergent Specialization | 0/4 | Not started | - |
