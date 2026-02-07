@@ -32,12 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. At any given moment, the majority of worker ants are visibly doing something (moving, digging, foraging) rather than sitting idle
   4. The simulation runs at 30 FPS with 500+ ants on screen without frame drops from neighbor lookups
   5. No AntState variant produces a (0,0) freeze -- every state has explicit movement handling
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Wire orphaned movement functions and eliminate wildcard state matches
-- [ ] 01-02: Tune activity probabilities and validate ant liveliness
-- [ ] 01-03: Implement spatial hash grid for O(1) neighbor lookups
+- [ ] 01-01-PLAN.md -- Wire orphaned movement functions and eliminate wildcard state matches
+- [ ] 01-02-PLAN.md -- Tune activity probabilities and validate ant liveliness
+- [ ] 01-03-PLAN.md -- Implement spatial hash grid for O(1) neighbor lookups
 
 ### Phase 2: Pheromone Communication
 **Goal**: Ants lay and follow pheromone trails that form visible paths between food sources and colonies -- the foundation of stigmergic intelligence
