@@ -163,7 +163,7 @@ pub fn foraging_movement(
                     terrain,
                 )
             {
-                if pheromones.get(pos.x, pos.y, member.colony_id, PheromoneType::Food) > 0.1 {
+                if pheromones.get(pos.x, pos.y, member.colony_id, PheromoneType::Food) > 0.01 {
                     return Some(dir);
                 }
             }
