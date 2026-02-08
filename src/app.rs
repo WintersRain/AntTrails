@@ -42,6 +42,7 @@ pub struct App {
     paused: bool,
     tick: u64,
     speed_multiplier: f32,
+    show_pheromones: bool,
 }
 
 impl App {
@@ -101,6 +102,7 @@ impl App {
             paused: false,
             tick: 0,
             speed_multiplier: 1.0,
+            show_pheromones: true,
         })
     }
 
@@ -146,6 +148,9 @@ impl App {
             Some(Command::ScrollDown) => self.camera.move_by(0, 1),
             Some(Command::ScrollLeft) => self.camera.move_by(-1, 0),
             Some(Command::ScrollRight) => self.camera.move_by(1, 0),
+            Some(Command::TogglePheromones) => {
+                self.show_pheromones = !self.show_pheromones;
+            }
             None => {}
         }
     }
@@ -270,10 +275,13 @@ impl App {
         let paused = self.paused;
         let speed = self.speed_multiplier;
         let raining = self.rain_event.is_some();
+        let pheromones = &self.pheromones;
+        let show_pheromones = self.show_pheromones;
 
         self.terminal.draw(|frame| {
             render_frame(
                 frame, terrain, water, world, colonies, camera, tick, paused, speed, raining,
+                pheromones, show_pheromones,
             );
         })?;
         Ok(())
