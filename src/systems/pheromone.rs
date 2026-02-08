@@ -2,6 +2,7 @@
 
 use hecs::World;
 
+use crate::colony::ColonyState;
 use crate::components::{Ant, AntState, ColonyMember, Position};
 use crate::terrain::Terrain;
 
@@ -81,6 +82,19 @@ impl PheromoneGrid {
     pub fn deposit(&mut self, x: i32, y: i32, colony: u8, ptype: PheromoneType, amount: f32) {
         if let Some(i) = self.index(x, y, colony, ptype) {
             self.data[i] = (self.data[i] + amount).min(MAX_PHEROMONE);
+        }
+    }
+
+    /// Adaptive deposit: effective amount decreases as cell concentration rises
+    /// Formula: effective = base * (1.0 - current / MAX_PHEROMONE)
+    pub fn deposit_adaptive(
+        &mut self, x: i32, y: i32, colony: u8,
+        ptype: PheromoneType, base_amount: f32,
+    ) {
+        if let Some(i) = self.index(x, y, colony, ptype) {
+            let current = self.data[i];
+            let effective = base_amount * (1.0 - current / MAX_PHEROMONE);
+            self.data[i] = (current + effective).min(MAX_PHEROMONE);
         }
     }
 
@@ -180,6 +194,46 @@ impl PheromoneGrid {
 
         best_dir
     }
+
+    /// Weighted random gradient selection: probability proportional to strength^2
+    /// This replaces greedy "pick strongest" which fails under saturation
+    pub fn get_gradient_weighted(
+        &self, x: i32, y: i32, colony: u8, ptype: PheromoneType,
+    ) -> Option<(i32, i32)> {
+        let directions = [
+            (0, -1), (0, 1), (-1, 0), (1, 0),
+            (-1, -1), (1, -1), (-1, 1), (1, 1),
+        ];
+
+        // Collect neighbors with non-negligible pheromone
+        let mut candidates: Vec<((i32, i32), f32)> = Vec::new();
+
+        for (dx, dy) in directions {
+            let strength = self.get(x + dx, y + dy, colony, ptype);
+            if strength > 0.01 {
+                candidates.push(((dx, dy), strength));
+            }
+        }
+
+        if candidates.is_empty() {
+            return None;
+        }
+
+        // Weighted random: probability proportional to strength^2
+        // Squaring emphasizes stronger trails while allowing some exploration
+        let total: f32 = candidates.iter().map(|(_, s)| s * s).sum();
+        let mut roll = fastrand::f32() * total;
+
+        for ((dx, dy), s) in &candidates {
+            roll -= s * s;
+            if roll <= 0.0 {
+                return Some((*dx, *dy));
+            }
+        }
+
+        // Fallback to last candidate (floating-point edge case)
+        candidates.last().map(|((dx, dy), _)| (*dx, *dy))
+    }
 }
 
 /// Decay all pheromones
@@ -188,22 +242,50 @@ pub fn pheromone_decay_system(pheromones: &mut PheromoneGrid) {
 }
 
 /// Ants deposit pheromones as they walk
-pub fn pheromone_deposit_system(world: &World, pheromones: &mut PheromoneGrid) {
+pub fn pheromone_deposit_system(
+    world: &World, pheromones: &mut PheromoneGrid, colonies: &[ColonyState],
+) {
     for (_entity, (pos, ant, member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
-        // Deposit home pheromone when near nest or exploring
-        if matches!(ant.state, AntState::Wandering | AntState::Digging) {
-            pheromones.deposit(pos.x, pos.y, member.colony_id, PheromoneType::Home, DEPOSIT_HOME_BASE);
-        }
+        let colony_id = member.colony_id;
 
-        // Deposit food pheromone when carrying food (will be added in food system)
-        if ant.state == AntState::Carrying {
-            pheromones.deposit(
-                pos.x,
-                pos.y,
-                member.colony_id,
-                PheromoneType::Food,
-                DEPOSIT_FOOD_BASE * 2.0,
-            );
+        match ant.state {
+            // Carrying ants lay FOOD pheromone (they found food, others should follow)
+            AntState::Carrying => {
+                pheromones.deposit_adaptive(
+                    pos.x, pos.y, colony_id,
+                    PheromoneType::Food, DEPOSIT_FOOD_BASE,
+                );
+            }
+            // Wandering/Returning ants lay HOME pheromone near nest only
+            AntState::Wandering | AntState::Returning => {
+                if let Some(colony) = colonies.get(colony_id as usize) {
+                    let dist = ((pos.x - colony.home_x).abs()
+                        + (pos.y - colony.home_y).abs()) as f32;
+                    let proximity = (1.0 - dist / HOME_DEPOSIT_RADIUS).max(0.0);
+                    if proximity > 0.0 {
+                        pheromones.deposit_adaptive(
+                            pos.x, pos.y, colony_id,
+                            PheromoneType::Home, DEPOSIT_HOME_BASE * proximity,
+                        );
+                    }
+                }
+            }
+            // Digging ants leave faint home pheromone near nest
+            AntState::Digging => {
+                if let Some(colony) = colonies.get(colony_id as usize) {
+                    let dist = ((pos.x - colony.home_x).abs()
+                        + (pos.y - colony.home_y).abs()) as f32;
+                    let proximity = (1.0 - dist / 20.0).max(0.0);
+                    if proximity > 0.0 {
+                        pheromones.deposit_adaptive(
+                            pos.x, pos.y, colony_id,
+                            PheromoneType::Home, DEPOSIT_HOME_BASE * 0.5 * proximity,
+                        );
+                    }
+                }
+            }
+            // Other states don't deposit (combat system handles danger pheromone)
+            _ => {}
         }
     }
 }
@@ -217,8 +299,7 @@ pub fn follow_pheromone(
     ptype: PheromoneType,
     terrain: &Terrain,
 ) -> Option<(i32, i32)> {
-    if let Some((dx, dy)) = pheromones.get_gradient(x, y, colony, ptype) {
-        // Check if passable
+    if let Some((dx, dy)) = pheromones.get_gradient_weighted(x, y, colony, ptype) {
         if terrain.is_passable(x + dx, y + dy) {
             return Some((dx, dy));
         }
