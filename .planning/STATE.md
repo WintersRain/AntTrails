@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Emergent behavior -- ants do things the developer didn't explicitly program. The simulation surprises its creator.
-**Current focus:** Phase 2 in progress: Pheromone Communication (plan 2 of 3 complete)
+**Current focus:** Phase 2 complete: Pheromone Communication (3/3 plans done). Ready for Phase 3.
 
 ## Current Position
 
-Phase: 2 of 7 (Pheromone Communication)
-Plan: 2 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-07 -- Completed 02-02-PLAN.md (Pheromone system wiring)
+Phase: 2 of 7 (Pheromone Communication) -- COMPLETE
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-08 -- Completed 02-03-PLAN.md (Pheromone trail visualization)
 
-Progress: [#####...................] 21% (5/24 plans)
+Progress: [######..................] 25% (6/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: 2.6min
-- Total execution time: 0.22 hours
+- Total plans completed: 6
+- Average duration: 2.5min
+- Total execution time: 0.25 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-unfreeze-and-activate | 3/3 | 7min | 2.3min |
-| 02-pheromone-communication | 2/3 | 6min | 3min |
+| 02-pheromone-communication | 3/3 | 8min | 2.7min |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (1min), 01-03 (4min), 02-01 (4min), 02-02 (2min)
+- Last 5 plans: 01-03 (4min), 02-01 (4min), 02-02 (2min), 02-03 (2min)
 - Trend: stable
 
 *Updated after each plan completion*
@@ -58,6 +58,9 @@ Recent decisions affecting current work:
 - [02-01]: Adaptive deposit formula: base * (1.0 - current/MAX_PHEROMONE) prevents single-source saturation
 - [02-02]: Decay runs every tick (not tick%10) since per-type rates already account for per-tick execution
 - [02-02]: Detection threshold 0.01 allows ants to sense diffusion fringes 3-5 tiles from trail center
+- [02-03]: Default show_pheromones to true so user sees trails immediately -- core visual feedback of Phase 2
+- [02-03]: Pheromone RGB cap at 120 (not 255) preserves foreground terrain character readability
+- [02-03]: Visual threshold 0.05 (vs 0.01 detection) to avoid noisy clutter from diffusion fringes
 
 ### Pending Todos
 
@@ -75,6 +78,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-07
-Stopped at: Completed 02-02-PLAN.md (Pheromone system wiring)
+Last session: 2026-02-08
+Stopped at: Completed 02-03-PLAN.md (Pheromone trail visualization) -- Phase 2 complete
 Resume file: None
