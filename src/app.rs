@@ -202,12 +202,16 @@ impl App {
             systems::aphid::aphid_system(&mut self.world, &mut self.colonies);
 
             // === Phase 4: Pheromones ===
-            systems::pheromone::pheromone_deposit_system(&self.world, &mut self.pheromones);
+            // 1. Decay first (reduces all values per-tick with type-specific rates)
+            systems::pheromone::pheromone_decay_system(&mut self.pheromones);
 
-            // Decay pheromones (every 10 ticks)
-            if self.tick % 10 == 0 {
-                systems::pheromone::pheromone_decay_system(&mut self.pheromones);
-            }
+            // 2. Diffuse (spread gradients spatially to create detectable trails)
+            self.pheromones.diffuse();
+
+            // 3. Then deposit new pheromone from ant positions (adaptive rates)
+            systems::pheromone::pheromone_deposit_system(
+                &self.world, &mut self.pheromones, &self.colonies,
+            );
 
             // === Phase 5: Lifecycle ===
             systems::lifecycle::lifecycle_system(&mut self.world, &mut self.colonies, self.tick);
