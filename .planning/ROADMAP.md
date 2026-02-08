@@ -63,11 +63,12 @@ Plans:
   1. A single SimConfig struct (or equivalent) contains all tunable behavior parameters from across the codebase
   2. Changing a pheromone decay rate, activity probability, or combat parameter requires editing exactly one location
   3. The config is organized by system (movement, pheromone, combat, lifecycle) so parameters are findable
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Audit all magic constants across source files and create centralized config
-- [ ] 03-02: Replace scattered constants with config references and validate behavior unchanged
+- [ ] 03-01-PLAN.md -- Create SimConfig struct with 9 sub-structs, wire into App, update all system signatures
+- [ ] 03-02-PLAN.md -- Replace constants in pheromone, combat, lifecycle, movement, dig systems
+- [ ] 03-03-PLAN.md -- Replace constants in food, spawn, aphid, water, hazard, colony systems
 
 ### Phase 4: Utility AI Core
 **Goal**: Ants evaluate their situation and choose the best action based on context -- nearby food, danger, colony needs, pheromone signals -- instead of rolling dice
@@ -147,7 +148,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 |-------|----------------|--------|-----------|
 | 1. Unfreeze & Activate | 3/3 | Complete | 2026-02-07 |
 | 2. Pheromone Communication | 3/3 | Complete | 2026-02-08 |
-| 3. Config Centralization | 0/2 | Not started | - |
+| 3. Config Centralization | 0/3 | Not started | - |
 | 4. Utility AI Core | 0/5 | Not started | - |
 | 5. Emergent Specialization | 0/4 | Not started | - |
 | 6. Colony Intelligence | 0/4 | Not started | - |
