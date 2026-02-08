@@ -46,7 +46,7 @@
 |-------------|-------|--------|
 | FIX-01 | Phase 1: Unfreeze & Activate | Complete |
 | FIX-02 | Phase 1: Unfreeze & Activate | Complete |
-| FIX-03 | Phase 2: Pheromone Communication | Pending |
+| FIX-03 | Phase 2: Pheromone Communication | Complete |
 | FIX-04 | Phase 1: Unfreeze & Activate | Complete |
 | AI-01 | Phase 4: Utility AI Core | Pending |
 | AI-02 | Phase 5: Emergent Specialization | Pending |

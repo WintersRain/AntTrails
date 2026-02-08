@@ -13,7 +13,7 @@ Transform AntTrails from a compiling-but-frozen ant colony simulator into a livi
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Unfreeze & Activate** - Wire orphaned movement code, tune activity rates, add spatial hashing so ants visibly move and interact
-- [ ] **Phase 2: Pheromone Communication** - Fix pheromone saturation/decay balance and wire gradient following so visible ant trails form
+- [x] **Phase 2: Pheromone Communication** - Fix pheromone saturation/decay balance and wire gradient following so visible ant trails form
 - [ ] **Phase 3: Config Centralization** - Gather 20+ scattered magic constants into a single tunable config before adding more systems
 - [ ] **Phase 4: Utility AI Core** - Replace dice-roll state transitions with context-aware scoring so ants make situational decisions
 - [ ] **Phase 5: Emergent Specialization** - Add memory, response thresholds, and age polyethism so individual ants develop unique behavioral profiles
@@ -51,9 +51,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Rewrite pheromone core: adaptive deposit, per-tick type-specific decay, diffusion, weighted gradient
-- [ ] 02-02-PLAN.md -- Wire pheromone system into game loop and lower foraging detection threshold
-- [ ] 02-03-PLAN.md -- Add pheromone trail visualization with toggle key and validate trail formation
+- [x] 02-01-PLAN.md -- Rewrite pheromone core: adaptive deposit, per-tick type-specific decay, diffusion, weighted gradient
+- [x] 02-02-PLAN.md -- Wire pheromone system into game loop and lower foraging detection threshold
+- [x] 02-03-PLAN.md -- Add pheromone trail visualization with toggle key and validate trail formation
 
 ### Phase 3: Config Centralization
 **Goal**: All behavioral constants live in one place so tuning ant behavior is a config edit, not a codebase scavenger hunt
@@ -146,7 +146,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Unfreeze & Activate | 3/3 | Complete | 2026-02-07 |
-| 2. Pheromone Communication | 0/3 | Planned | - |
+| 2. Pheromone Communication | 3/3 | Complete | 2026-02-08 |
 | 3. Config Centralization | 0/2 | Not started | - |
 | 4. Utility AI Core | 0/5 | Not started | - |
 | 5. Emergent Specialization | 0/4 | Not started | - |
