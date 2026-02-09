@@ -6,9 +6,6 @@ use crate::components::{Ant, AntState, Dead, Drowning, Position};
 use crate::config::SimConfig;
 use crate::terrain::Terrain;
 
-/// Maximum water depth (DF-style 0-7)
-pub const MAX_WATER_DEPTH: u8 = 7;
-
 /// Water cell data
 #[derive(Clone, Copy, Default)]
 pub struct WaterCell {
@@ -43,14 +40,16 @@ impl WaterCell {
 pub struct WaterGrid {
     pub width: usize,
     pub height: usize,
+    pub max_depth: u8,
     cells: Vec<WaterCell>,
 }
 
 impl WaterGrid {
-    pub fn new(width: usize, height: usize) -> Self {
+    pub fn new(width: usize, height: usize, max_depth: u8) -> Self {
         Self {
             width,
             height,
+            max_depth,
             cells: vec![WaterCell::default(); width * height],
         }
     }
@@ -77,8 +76,9 @@ impl WaterGrid {
     }
 
     pub fn add_water(&mut self, x: i32, y: i32, amount: u8) {
+        let max = self.max_depth;
         if let Some(cell) = self.get_mut(x, y) {
-            cell.depth = cell.depth.saturating_add(amount).min(MAX_WATER_DEPTH);
+            cell.depth = cell.depth.saturating_add(amount).min(max);
             cell.stagnant = 0;
         }
     }
@@ -93,7 +93,7 @@ impl WaterGrid {
         let from_depth = self.depth(from_x, from_y);
         let to_depth = self.depth(to_x, to_y);
 
-        if from_depth >= amount && to_depth + amount <= MAX_WATER_DEPTH {
+        if from_depth >= amount && to_depth + amount <= self.max_depth {
             self.remove_water(from_x, from_y, amount);
             self.add_water(to_x, to_y, amount);
 
@@ -108,6 +108,7 @@ impl WaterGrid {
 
 /// Calculate water pressure based on column height
 pub fn calculate_pressure(water: &mut WaterGrid, terrain: &Terrain) {
+    let max_depth = water.max_depth;
     for x in 0..water.width as i32 {
         for y in 0..water.height as i32 {
             let depth = water.depth(x, y);
@@ -132,7 +133,7 @@ pub fn calculate_pressure(water: &mut WaterGrid, terrain: &Terrain) {
             }
 
             if let Some(cell) = water.get_mut(x, y) {
-                cell.pressure = pressure.min(MAX_WATER_DEPTH);
+                cell.pressure = pressure.min(max_depth);
             }
         }
     }
@@ -172,13 +173,13 @@ pub fn water_flow_system(water: &mut WaterGrid, terrain: &Terrain) {
 
                     let should_flow = if priority > 0 {
                         // Downward: flow if room available
-                        neighbor.depth < MAX_WATER_DEPTH
+                        neighbor.depth < water.max_depth
                     } else if priority == 0 {
                         // Sideways: flow if neighbor has lower pressure and depth
                         neighbor.pressure < cell.pressure && neighbor.depth < cell.depth
                     } else {
                         // Upward: only under significant pressure
-                        cell.pressure > neighbor.pressure + 2 && neighbor.depth < MAX_WATER_DEPTH
+                        cell.pressure > neighbor.pressure + 2 && neighbor.depth < water.max_depth
                     };
 
                     if should_flow {
@@ -192,12 +193,12 @@ pub fn water_flow_system(water: &mut WaterGrid, terrain: &Terrain) {
 }
 
 /// Evaporation system - shallow exposed water evaporates
-pub fn evaporation_system(water: &mut WaterGrid, terrain: &Terrain, _config: &SimConfig) {
+pub fn evaporation_system(water: &mut WaterGrid, terrain: &Terrain, config: &SimConfig) {
     for y in 0..water.height as i32 {
         for x in 0..water.width as i32 {
             let cell = water.get(x, y);
 
-            if cell.depth > 0 && cell.depth <= 2 {
+            if cell.depth > 0 && cell.depth <= config.water.evaporation_max_depth {
                 // Check if exposed to air above
                 let exposed = y == 0 || (terrain.is_passable(x, y - 1) && water.depth(x, y - 1) == 0);
 
@@ -206,7 +207,7 @@ pub fn evaporation_system(water: &mut WaterGrid, terrain: &Terrain, _config: &Si
                         cell.stagnant += 1;
 
                         // Evaporate after being stagnant
-                        if cell.stagnant > 500 {
+                        if cell.stagnant > config.water.stagnant_evaporation_ticks {
                             cell.depth = cell.depth.saturating_sub(1);
                             cell.stagnant = 0;
                         }
@@ -225,13 +226,13 @@ pub struct RainEvent {
 }
 
 /// Rain system
-pub fn rain_system(water: &mut WaterGrid, terrain: &Terrain, event: &mut Option<RainEvent>, _config: &SimConfig) {
+pub fn rain_system(water: &mut WaterGrid, terrain: &Terrain, event: &mut Option<RainEvent>, config: &SimConfig) {
     // Random chance to start rain
-    if event.is_none() && fastrand::u32(..10000) == 0 {
+    if event.is_none() && fastrand::u32(..config.water.rain_chance) == 0 {
         *event = Some(RainEvent {
-            intensity: fastrand::u8(1..=3),
-            duration: fastrand::u32(200..1000),
-            coverage: fastrand::f32() * 0.5 + 0.3,
+            intensity: fastrand::u8(config.water.rain_intensity_min..=config.water.rain_intensity_max),
+            duration: fastrand::u32(config.water.rain_duration_min..config.water.rain_duration_max),
+            coverage: fastrand::f32() * (config.water.rain_coverage_max - config.water.rain_coverage_min) + config.water.rain_coverage_min,
         });
     }
 
@@ -260,7 +261,7 @@ pub fn rain_system(water: &mut WaterGrid, terrain: &Terrain, event: &mut Option<
 }
 
 /// Drowning system - ants in deep water drown
-pub fn drowning_system(world: &mut World, water: &WaterGrid, _config: &SimConfig) {
+pub fn drowning_system(world: &mut World, water: &WaterGrid, config: &SimConfig) {
     let mut to_start_drowning: Vec<hecs::Entity> = Vec::new();
     let mut to_stop_drowning: Vec<hecs::Entity> = Vec::new();
     let mut to_kill: Vec<hecs::Entity> = Vec::new();
@@ -269,14 +270,14 @@ pub fn drowning_system(world: &mut World, water: &WaterGrid, _config: &SimConfig
     for (entity, (pos, _ant)) in world.query::<(&Position, &Ant)>().iter() {
         let depth = water.depth(pos.x, pos.y);
 
-        if depth >= 4 {
+        if depth >= config.water.dangerous_threshold {
             // In dangerous water
             if let Ok(drowning) = world.get::<&Drowning>(entity) {
                 let drown_threshold = match depth {
-                    7 => 1,
-                    6 => 3,
-                    5 => 10,
-                    4 => 30,
+                    7 => config.water.drown_threshold_7,
+                    6 => config.water.drown_threshold_6,
+                    5 => config.water.drown_threshold_5,
+                    4 => config.water.drown_threshold_4,
                     _ => 999,
                 };
 
@@ -313,13 +314,13 @@ pub fn drowning_system(world: &mut World, water: &WaterGrid, _config: &SimConfig
 }
 
 /// Ants flee from rising water
-pub fn flee_flood_system(world: &mut World, water: &WaterGrid, _config: &SimConfig) {
+pub fn flee_flood_system(world: &mut World, water: &WaterGrid, config: &SimConfig) {
     let mut to_flee: Vec<hecs::Entity> = Vec::new();
 
     for (entity, (pos, ant)) in world.query::<(&Position, &Ant)>().iter() {
         let depth = water.depth(pos.x, pos.y);
 
-        if depth >= 2 && ant.state != AntState::Fleeing && ant.state != AntState::Returning {
+        if depth >= config.water.flee_flood_depth && ant.state != AntState::Fleeing && ant.state != AntState::Returning {
             to_flee.push(entity);
         }
     }

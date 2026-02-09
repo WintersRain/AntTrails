@@ -63,7 +63,7 @@ impl App {
         let pheromones = PheromoneGrid::new(terrain.width, terrain.height, config.spawn.num_colonies, &config.pheromone);
 
         // Initialize water grid
-        let mut water = WaterGrid::new(terrain.width, terrain.height);
+        let mut water = WaterGrid::new(terrain.width, terrain.height, config.water.max_depth);
 
         // Initialize ECS world
         let mut world = World::new();

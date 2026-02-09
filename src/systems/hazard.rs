@@ -7,7 +7,7 @@ use crate::terrain::{Terrain, TerrainType};
 /// Check for and process cave-ins
 /// A tile is unstable if it's soil with too much air around/below it
 /// Tunnels (ant-reinforced passages) prevent adjacent tiles from collapsing
-pub fn cave_in_system(terrain: &mut Terrain, world: &mut World, _config: &SimConfig) {
+pub fn cave_in_system(terrain: &mut Terrain, world: &mut World, config: &SimConfig) {
     let width = terrain.width as i32;
     let height = terrain.height as i32;
 
@@ -36,7 +36,7 @@ pub fn cave_in_system(terrain: &mut Terrain, world: &mut World, _config: &SimCon
 
                 // Dense soil is more stable
                 let stability_bonus = if tile == Some(TerrainType::SoilDense) {
-                    2
+                    config.hazard.dense_stability_bonus
                 } else {
                     0
                 };
@@ -45,10 +45,10 @@ pub fn cave_in_system(terrain: &mut Terrain, world: &mut World, _config: &SimCon
                 // More open space = higher chance of collapse
                 let collapse_chance = match open_count.saturating_sub(stability_bonus) {
                     0..=2 => 0,
-                    3 => 1,
-                    4 => 3,
-                    5 => 10,
-                    _ => 25,
+                    3 => config.hazard.collapse_chance_3,
+                    4 => config.hazard.collapse_chance_4,
+                    5 => config.hazard.collapse_chance_5,
+                    _ => config.hazard.collapse_chance_6plus,
                 };
 
                 if fastrand::u8(..) < collapse_chance {
