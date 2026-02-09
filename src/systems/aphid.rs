@@ -7,17 +7,8 @@ use crate::components::{Ant, AntRole, Aphid, ColonyMember, Position};
 use crate::config::SimConfig;
 use crate::terrain::Terrain;
 
-/// Food produced by aphid per tick when farmed
-const APHID_FOOD_RATE: f32 = 0.1;
-
-/// Ticks to claim an aphid
-const CLAIM_TICKS: u32 = 50;
-
-/// Distance to consider "near" an aphid
-const NEARBY_DISTANCE: i32 = 2;
-
 /// Spawn aphids underground near plant roots (surface)
-pub fn spawn_aphids(world: &mut World, terrain: &Terrain, count: usize) {
+pub fn spawn_aphids(world: &mut World, terrain: &Terrain, count: usize, config: &SimConfig) {
     let mut spawned = 0;
     let mut attempts = 0;
 
@@ -44,7 +35,7 @@ pub fn spawn_aphids(world: &mut World, terrain: &Terrain, count: usize) {
             world.spawn((
                 Position { x, y },
                 Aphid {
-                    food_per_tick: APHID_FOOD_RATE,
+                    food_per_tick: config.spawn.aphid_food_rate,
                     colony_owner: None,
                 },
             ));
@@ -54,7 +45,7 @@ pub fn spawn_aphids(world: &mut World, terrain: &Terrain, count: usize) {
 }
 
 /// Aphid farming system - ants near aphids claim and farm them
-pub fn aphid_system(world: &mut World, colonies: &mut [ColonyState], _config: &SimConfig) {
+pub fn aphid_system(world: &mut World, colonies: &mut [ColonyState], config: &SimConfig) {
     // Collect ant positions by colony
     let mut ant_positions: Vec<(i32, i32, u8)> = Vec::new();
     for (_entity, (pos, ant, member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
@@ -73,7 +64,7 @@ pub fn aphid_system(world: &mut World, colonies: &mut [ColonyState], _config: &S
 
         for (ax, ay, colony_id) in &ant_positions {
             let dist = (pos.x - ax).abs() + (pos.y - ay).abs();
-            if dist <= NEARBY_DISTANCE {
+            if dist <= config.spawn.aphid_nearby_distance {
                 let idx = (*colony_id as usize).min(5);
                 nearby_counts[idx] += 1;
             }

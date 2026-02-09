@@ -6,14 +6,8 @@ use crate::config::SimConfig;
 use crate::systems::pheromone::{PheromoneGrid, PheromoneType};
 use crate::terrain::Terrain;
 
-/// Food regrow interval (ticks)
-const FOOD_REGROW_INTERVAL: u64 = 500;
-
-/// Food amount when spawned
-const INITIAL_FOOD_AMOUNT: u16 = 100;
-
 /// Spawn food sources on the surface
-pub fn spawn_food_sources(world: &mut World, terrain: &Terrain, count: usize) {
+pub fn spawn_food_sources(world: &mut World, terrain: &Terrain, count: usize, config: &SimConfig) {
     let mut spawned = 0;
     let mut attempts = 0;
 
@@ -35,8 +29,8 @@ pub fn spawn_food_sources(world: &mut World, terrain: &Terrain, count: usize) {
             world.spawn((
                 Position { x, y },
                 FoodSource {
-                    amount: INITIAL_FOOD_AMOUNT,
-                    regrow_rate: 1,
+                    amount: config.food.initial_amount,
+                    regrow_rate: config.food.regrow_rate,
                 },
             ));
             spawned += 1;
@@ -45,13 +39,13 @@ pub fn spawn_food_sources(world: &mut World, terrain: &Terrain, count: usize) {
 }
 
 /// Regrow food at existing food sources
-pub fn food_regrow_system(world: &mut World, tick: u64, _config: &SimConfig) {
-    if tick % FOOD_REGROW_INTERVAL != 0 {
+pub fn food_regrow_system(world: &mut World, tick: u64, config: &SimConfig) {
+    if tick % config.food.regrow_interval != 0 {
         return;
     }
 
     for (_entity, food) in world.query::<&mut FoodSource>().iter() {
-        if food.amount < INITIAL_FOOD_AMOUNT {
+        if food.amount < config.food.initial_amount {
             food.amount = food.amount.saturating_add(food.regrow_rate as u16);
         }
     }
@@ -63,7 +57,7 @@ pub fn foraging_system(
     _terrain: &Terrain,
     _pheromones: &PheromoneGrid,
     colonies: &mut [ColonyState],
-    _config: &SimConfig,
+    config: &SimConfig,
 ) {
     // Collect food source positions and amounts
     let mut food_positions: Vec<(i32, i32, hecs::Entity)> = Vec::new();
@@ -101,8 +95,8 @@ pub fn foraging_system(
                     let home_x = colonies[colony_id].home_x;
                     let home_y = colonies[colony_id].home_y;
                     let dist = (pos.x - home_x).abs() + (pos.y - home_y).abs();
-                    if dist <= 3 {
-                        deposits.push((member.colony_id, 10));
+                    if dist <= config.food.deposit_distance {
+                        deposits.push((member.colony_id, config.food.food_per_deposit));
                     }
                 }
             }
@@ -128,7 +122,7 @@ pub fn foraging_system(
             if let Ok(mut ant) = world.get::<&mut Ant>(ant_entity) {
                 ant.state = AntState::Carrying;
             }
-            let _ = world.insert_one(ant_entity, Carrying { item: CarryItem::Food(10) });
+            let _ = world.insert_one(ant_entity, Carrying { item: CarryItem::Food(config.food.food_per_pickup) });
         }
     }
 
@@ -151,6 +145,7 @@ pub fn foraging_movement(
     terrain: &Terrain,
     pheromones: &PheromoneGrid,
     colonies: &[ColonyState],
+    config: &SimConfig,
 ) -> Option<(i32, i32)> {
     match ant.state {
         AntState::Wandering => {
@@ -165,7 +160,7 @@ pub fn foraging_movement(
                     terrain,
                 )
             {
-                if pheromones.get(pos.x, pos.y, member.colony_id, PheromoneType::Food) > 0.01 {
+                if pheromones.get(pos.x, pos.y, member.colony_id, PheromoneType::Food) > config.food.food_pheromone_threshold {
                     return Some(dir);
                 }
             }
@@ -215,7 +210,7 @@ pub fn foraging_movement(
 }
 
 /// Check if ant has deposited food and should stop carrying
-pub fn check_deposit(world: &mut World, colonies: &[ColonyState], _config: &SimConfig) {
+pub fn check_deposit(world: &mut World, colonies: &[ColonyState], config: &SimConfig) {
     let mut to_stop_carrying: Vec<hecs::Entity> = Vec::new();
 
     for (entity, (pos, ant, member, _carrying)) in
@@ -230,7 +225,7 @@ pub fn check_deposit(world: &mut World, colonies: &[ColonyState], _config: &SimC
             let home_x = colonies[colony_id].home_x;
             let home_y = colonies[colony_id].home_y;
             let dist = (pos.x - home_x).abs() + (pos.y - home_y).abs();
-            if dist <= 3 {
+            if dist <= config.food.deposit_distance {
                 to_stop_carrying.push(entity);
             }
         }

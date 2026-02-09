@@ -42,7 +42,7 @@ pub fn movement_system(
             }
             AntState::Carrying => {
                 match crate::systems::food::foraging_movement(
-                    pos, ant, member, terrain, pheromones, colonies,
+                    pos, ant, member, terrain, pheromones, colonies, config,
                 ) {
                     Some(dir) => dir,
                     None => random_movement(),
@@ -62,7 +62,7 @@ pub fn movement_system(
             }
             AntState::Following => {
                 match crate::systems::food::foraging_movement(
-                    pos, ant, member, terrain, pheromones, colonies,
+                    pos, ant, member, terrain, pheromones, colonies, config,
                 ) {
                     Some(dir) => dir,
                     None => random_movement(),

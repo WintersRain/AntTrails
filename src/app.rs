@@ -69,13 +69,13 @@ impl App {
         let mut world = World::new();
 
         // Create colonies and spawn initial ants
-        let colonies = systems::spawn::spawn_colonies(&mut world, &terrain, config.spawn.num_colonies);
+        let colonies = systems::spawn::spawn_colonies(&mut world, &terrain, &config);
 
         // Spawn food sources on surface
-        systems::food::spawn_food_sources(&mut world, &terrain, config.food.num_food_sources);
+        systems::food::spawn_food_sources(&mut world, &terrain, config.food.num_food_sources, &config);
 
         // Spawn aphids underground
-        systems::aphid::spawn_aphids(&mut world, &terrain, config.spawn.num_aphids);
+        systems::aphid::spawn_aphids(&mut world, &terrain, config.spawn.num_aphids, &config);
 
         // Spawn some initial water in caves
         systems::water::spawn_water_sources(&mut water, &terrain, config.water.num_water_sources);
