@@ -12,7 +12,7 @@ pub fn movement_system(
     terrain: &Terrain,
     pheromones: &PheromoneGrid,
     colonies: &[ColonyState],
-    _config: &SimConfig,
+    config: &SimConfig,
 ) {
     // Collect moves to apply (can't mutate while iterating)
     let mut moves: Vec<(hecs::Entity, i32, i32)> = Vec::new();
@@ -24,7 +24,7 @@ pub fn movement_system(
         }
 
         // Queens move rarely
-        if ant.role == AntRole::Queen && fastrand::u8(..) > 5 {
+        if ant.role == AntRole::Queen && fastrand::u8(..) > config.movement.queen_move_threshold {
             continue;
         }
 
@@ -34,7 +34,7 @@ pub fn movement_system(
             AntState::Digging => dig_movement(pos, terrain),
             AntState::Returning => climb_movement(pos, terrain),
             AntState::Idle => {
-                if fastrand::u8(..) < 90 {
+                if fastrand::u8(..) < config.movement.idle_move_threshold {
                     random_movement()
                 } else {
                     (0, 0)
@@ -55,7 +55,7 @@ pub fn movement_system(
                 }
             }
             AntState::Fleeing => {
-                match crate::systems::combat::fleeing_movement(pos, pheromones, _config) {
+                match crate::systems::combat::fleeing_movement(pos, pheromones, config) {
                     Some(dir) => dir,
                     None => random_movement(),
                 }

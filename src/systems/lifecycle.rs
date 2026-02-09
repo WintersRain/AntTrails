@@ -4,45 +4,29 @@ use crate::colony::ColonyState;
 use crate::components::{Age, Ant, AntRole, AntState, ColonyMember, Dead, Position};
 use crate::config::SimConfig;
 
-// Lifecycle timing (in ticks)
-const EGG_HATCH_TIME: u32 = 200;
-const LARVAE_MATURE_TIME: u32 = 300;
-const QUEEN_LAY_INTERVAL: u32 = 100;
-const FOOD_PER_EGG: u32 = 10;
-
-// Lifespan (in ticks)
-const WORKER_LIFESPAN: u32 = 5000;
-const SOLDIER_LIFESPAN: u32 = 3000;
-const QUEEN_LIFESPAN: u32 = 50000;
-
-// Food consumption
-const FOOD_CONSUME_INTERVAL: u32 = 50;
-const LARVAE_FOOD_COST: u32 = 2;
-const ANT_FOOD_COST: u32 = 1;
-
 /// Main lifecycle system - handles aging, hatching, maturing, and death
-pub fn lifecycle_system(world: &mut World, colonies: &mut [ColonyState], tick: u64, _config: &SimConfig) {
+pub fn lifecycle_system(world: &mut World, colonies: &mut [ColonyState], tick: u64, config: &SimConfig) {
     // Process queen egg-laying
-    queen_lay_eggs(world, colonies, tick);
+    queen_lay_eggs(world, colonies, tick, config);
 
     // Process egg hatching
-    hatch_eggs(world, tick);
+    hatch_eggs(world, tick, config);
 
     // Process larvae maturing
-    mature_larvae(world, tick);
+    mature_larvae(world, tick, config);
 
     // Process aging and natural death
     age_and_die(world, tick);
 
     // Process food consumption
-    if tick % FOOD_CONSUME_INTERVAL as u64 == 0 {
-        consume_food(world, colonies);
+    if tick % config.lifecycle.food_consume_interval as u64 == 0 {
+        consume_food(world, colonies, config);
     }
 }
 
 /// Queens lay eggs if colony has enough food
-fn queen_lay_eggs(world: &mut World, colonies: &mut [ColonyState], tick: u64) {
-    if tick % QUEEN_LAY_INTERVAL as u64 != 0 {
+fn queen_lay_eggs(world: &mut World, colonies: &mut [ColonyState], tick: u64, config: &SimConfig) {
+    if tick % config.lifecycle.queen_lay_interval as u64 != 0 {
         return;
     }
 
@@ -60,8 +44,8 @@ fn queen_lay_eggs(world: &mut World, colonies: &mut [ColonyState], tick: u64) {
         }
 
         // Check if colony has enough food
-        if colonies[colony_id].food_stored >= FOOD_PER_EGG {
-            colonies[colony_id].food_stored -= FOOD_PER_EGG;
+        if colonies[colony_id].food_stored >= config.lifecycle.food_per_egg {
+            colonies[colony_id].food_stored -= config.lifecycle.food_per_egg;
             eggs_to_spawn.push((pos.x, pos.y, member.colony_id));
         }
     }
@@ -81,14 +65,14 @@ fn queen_lay_eggs(world: &mut World, colonies: &mut [ColonyState], tick: u64) {
             ColonyMember { colony_id },
             Age {
                 ticks: 0,
-                max_ticks: EGG_HATCH_TIME,
+                max_ticks: config.lifecycle.egg_hatch_time,
             },
         ));
     }
 }
 
 /// Eggs hatch into larvae after enough time
-fn hatch_eggs(world: &mut World, _tick: u64) {
+fn hatch_eggs(world: &mut World, _tick: u64, config: &SimConfig) {
     let mut to_hatch: Vec<hecs::Entity> = Vec::new();
 
     for (entity, (ant, age)) in world.query::<(&Ant, &Age)>().iter() {
@@ -103,13 +87,13 @@ fn hatch_eggs(world: &mut World, _tick: u64) {
         }
         if let Ok(mut age) = world.get::<&mut Age>(entity) {
             age.ticks = 0;
-            age.max_ticks = LARVAE_MATURE_TIME;
+            age.max_ticks = config.lifecycle.larvae_mature_time;
         }
     }
 }
 
 /// Larvae mature into workers or soldiers
-fn mature_larvae(world: &mut World, _tick: u64) {
+fn mature_larvae(world: &mut World, _tick: u64, config: &SimConfig) {
     let mut to_mature: Vec<hecs::Entity> = Vec::new();
 
     for (entity, (ant, age)) in world.query::<(&Ant, &Age)>().iter() {
@@ -120,16 +104,16 @@ fn mature_larvae(world: &mut World, _tick: u64) {
 
     for entity in to_mature {
         // 80% workers, 20% soldiers
-        let new_role = if fastrand::u8(..) < 204 {
+        let new_role = if fastrand::u8(..) < config.lifecycle.worker_ratio_threshold {
             AntRole::Worker
         } else {
             AntRole::Soldier
         };
 
         let lifespan = match new_role {
-            AntRole::Worker => WORKER_LIFESPAN,
-            AntRole::Soldier => SOLDIER_LIFESPAN,
-            _ => WORKER_LIFESPAN,
+            AntRole::Worker => config.lifecycle.worker_lifespan,
+            AntRole::Soldier => config.lifecycle.soldier_lifespan,
+            _ => config.lifecycle.worker_lifespan,
         };
 
         if let Ok(mut ant) = world.get::<&mut Ant>(entity) {
@@ -179,7 +163,7 @@ fn age_and_die(world: &mut World, _tick: u64) {
 }
 
 /// Consume food from colonies based on population
-fn consume_food(world: &mut World, colonies: &mut [ColonyState]) {
+fn consume_food(world: &mut World, colonies: &mut [ColonyState], config: &SimConfig) {
     // Count population per colony
     let mut food_needed: Vec<u32> = vec![0; colonies.len()];
 
@@ -190,8 +174,8 @@ fn consume_food(world: &mut World, colonies: &mut [ColonyState]) {
         }
 
         let cost = match ant.role {
-            AntRole::Larvae => LARVAE_FOOD_COST,
-            AntRole::Queen | AntRole::Worker | AntRole::Soldier => ANT_FOOD_COST,
+            AntRole::Larvae => config.lifecycle.larvae_food_cost,
+            AntRole::Queen | AntRole::Worker | AntRole::Soldier => config.lifecycle.ant_food_cost,
             AntRole::Egg => 0, // Eggs don't consume food
         };
 
@@ -207,7 +191,7 @@ fn consume_food(world: &mut World, colonies: &mut [ColonyState]) {
 }
 
 /// Add Age component to queens that don't have one
-pub fn ensure_queen_ages(world: &mut World) {
+pub fn ensure_queen_ages(world: &mut World, config: &SimConfig) {
     let mut queens_without_age: Vec<hecs::Entity> = Vec::new();
 
     for (entity, ant) in world.query::<&Ant>().iter() {
@@ -221,7 +205,7 @@ pub fn ensure_queen_ages(world: &mut World) {
             entity,
             Age {
                 ticks: 0,
-                max_ticks: QUEEN_LIFESPAN,
+                max_ticks: config.lifecycle.queen_lifespan,
             },
         );
     }

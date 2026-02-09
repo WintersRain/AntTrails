@@ -81,7 +81,7 @@ impl App {
         systems::water::spawn_water_sources(&mut water, &terrain, config.water.num_water_sources);
 
         // Ensure queens have Age component
-        systems::lifecycle::ensure_queen_ages(&mut world);
+        systems::lifecycle::ensure_queen_ages(&mut world, &config);
 
         // Initialize spatial grid for neighbor lookups
         let spatial_grid = SpatialGrid::new(terrain.width, terrain.height, 8);
