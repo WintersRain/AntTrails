@@ -5,15 +5,9 @@ use crate::config::SimConfig;
 use crate::spatial::SpatialGrid;
 use crate::systems::pheromone::{PheromoneGrid, PheromoneType};
 
-/// Base damage for combat
-const BASE_DAMAGE: u8 = 10;
-
-/// Combat check interval (ticks)
-const COMBAT_INTERVAL: u64 = 5;
-
 /// Combat system - ants from different colonies fight when adjacent
-pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64, spatial_grid: &SpatialGrid, _config: &SimConfig) {
-    if tick % COMBAT_INTERVAL != 0 {
+pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64, spatial_grid: &SpatialGrid, config: &SimConfig) {
+    if tick % config.combat.combat_interval != 0 {
         return;
     }
 
@@ -27,9 +21,9 @@ pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u6
         }
 
         let strength = match ant.role {
-            AntRole::Soldier => 30,
-            AntRole::Worker => 10,
-            _ => 5,
+            AntRole::Soldier => config.combat.soldier_strength,
+            AntRole::Worker => config.combat.worker_strength,
+            _ => config.combat.other_strength,
         };
 
         combatants.push((entity, pos.x, pos.y, member.colony_id, ant.role, strength));
@@ -66,8 +60,8 @@ pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u6
             // Find entity_b's combat stats from combatants list
             if let Some(&(_, _, _, _, role_b, strength_b)) = combatants.iter().find(|(e, _, _, _, _, _)| *e == entity_b) {
                 // Combat! Each deals damage to the other
-                let damage_a = calculate_damage(strength_a, role_a);
-                let damage_b = calculate_damage(strength_b, role_b);
+                let damage_a = calculate_damage(strength_a, role_a, config);
+                let damage_b = calculate_damage(strength_b, role_b, config);
 
                 damage_to_apply.push((entity_b, damage_a, colony_a));
                 damage_to_apply.push((entity_a, damage_b, colony_b));
@@ -83,31 +77,31 @@ pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u6
 
     // Apply damage
     for (entity, damage, _attacker_colony) in damage_to_apply {
-        apply_damage(world, entity, damage);
+        apply_damage(world, entity, damage, config);
     }
 
     // Deposit danger pheromones
     for (x, y, colony) in danger_deposits {
-        pheromones.deposit(x, y, colony, PheromoneType::Danger, 0.5);
+        pheromones.deposit(x, y, colony, PheromoneType::Danger, config.combat.danger_deposit_amount);
     }
 }
 
 /// Calculate damage dealt
-fn calculate_damage(strength: u8, role: AntRole) -> u8 {
+fn calculate_damage(strength: u8, role: AntRole, config: &SimConfig) -> u8 {
     let base = match role {
-        AntRole::Soldier => BASE_DAMAGE * 2,
-        AntRole::Worker => BASE_DAMAGE,
-        _ => BASE_DAMAGE / 2,
+        AntRole::Soldier => config.combat.base_damage * 2,
+        AntRole::Worker => config.combat.base_damage,
+        _ => config.combat.base_damage / 2,
     };
 
     // Add randomness and strength bonus
-    let roll = fastrand::u8(0..10);
+    let roll = fastrand::u8(0..config.combat.damage_random_range);
     let strength_bonus = strength / 10;
     base.saturating_add(roll).saturating_add(strength_bonus).saturating_sub(5)
 }
 
 /// Apply damage to an ant
-fn apply_damage(world: &mut World, entity: hecs::Entity, damage: u8) {
+fn apply_damage(world: &mut World, entity: hecs::Entity, damage: u8, config: &SimConfig) {
     // Check if entity has Fighter component
     let current_health = world
         .get::<&Fighter>(entity)
@@ -125,14 +119,14 @@ fn apply_damage(world: &mut World, entity: hecs::Entity, damage: u8) {
         }
         None => {
             // Add Fighter component with default health
-            let health = 50u8.saturating_sub(damage);
+            let health = config.combat.default_health.saturating_sub(damage);
             if health == 0 {
                 let _ = world.insert_one(entity, Dead);
             } else {
                 let _ = world.insert_one(
                     entity,
                     Fighter {
-                        strength: 10,
+                        strength: config.combat.default_fighter_strength,
                         health,
                     },
                 );
@@ -142,7 +136,7 @@ fn apply_damage(world: &mut World, entity: hecs::Entity, damage: u8) {
 }
 
 /// Soldiers patrol and respond to danger pheromones
-pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid, _config: &SimConfig) {
+pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid, config: &SimConfig) {
     let mut state_changes: Vec<(hecs::Entity, AntState)> = Vec::new();
 
     for (entity, (pos, ant, member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
@@ -153,10 +147,10 @@ pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid, _config:
         // Check for danger pheromones
         let danger = pheromones.get(pos.x, pos.y, member.colony_id, PheromoneType::Danger);
 
-        if danger > 0.1 && ant.state != AntState::Fighting {
+        if danger > config.combat.fight_danger_threshold && ant.state != AntState::Fighting {
             // Move toward danger
             state_changes.push((entity, AntState::Fighting));
-        } else if danger < 0.05 && ant.state == AntState::Fighting {
+        } else if danger < config.combat.stop_fight_threshold && ant.state == AntState::Fighting {
             // Return to wandering
             state_changes.push((entity, AntState::Wandering));
         }
@@ -170,7 +164,7 @@ pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid, _config:
 }
 
 /// Workers flee from enemies
-pub fn flee_system(world: &mut World, pheromones: &PheromoneGrid, _config: &SimConfig) {
+pub fn flee_system(world: &mut World, pheromones: &PheromoneGrid, config: &SimConfig) {
     let mut state_changes: Vec<(hecs::Entity, AntState)> = Vec::new();
 
     for (entity, (pos, ant, _member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
@@ -180,13 +174,13 @@ pub fn flee_system(world: &mut World, pheromones: &PheromoneGrid, _config: &SimC
 
         // Check for danger pheromones (from any colony - means combat)
         let mut danger = 0.0f32;
-        for c in 0..6u8 {
+        for c in 0..config.combat.max_colonies_scan {
             danger = danger.max(pheromones.get(pos.x, pos.y, c, PheromoneType::Danger));
         }
 
-        if danger > 0.3 && ant.state != AntState::Fleeing && ant.state != AntState::Carrying {
+        if danger > config.combat.flee_danger_threshold && ant.state != AntState::Fleeing && ant.state != AntState::Carrying {
             state_changes.push((entity, AntState::Fleeing));
-        } else if danger < 0.1 && ant.state == AntState::Fleeing {
+        } else if danger < config.combat.stop_flee_threshold && ant.state == AntState::Fleeing {
             state_changes.push((entity, AntState::Wandering));
         }
     }
@@ -209,7 +203,7 @@ pub fn fighting_movement(
 }
 
 /// Movement for fleeing workers - move away from danger
-pub fn fleeing_movement(pos: &Position, pheromones: &PheromoneGrid) -> Option<(i32, i32)> {
+pub fn fleeing_movement(pos: &Position, pheromones: &PheromoneGrid, config: &SimConfig) -> Option<(i32, i32)> {
     // Find direction with least danger
     let directions = [
         (0, -1),
@@ -227,13 +221,13 @@ pub fn fleeing_movement(pos: &Position, pheromones: &PheromoneGrid) -> Option<(i
 
     // Sum danger from all colonies at current position
     let mut current_danger = 0.0f32;
-    for c in 0..6u8 {
+    for c in 0..config.combat.max_colonies_scan {
         current_danger += pheromones.get(pos.x, pos.y, c, PheromoneType::Danger);
     }
 
     for (dx, dy) in directions {
         let mut danger = 0.0f32;
-        for c in 0..6u8 {
+        for c in 0..config.combat.max_colonies_scan {
             danger += pheromones.get(pos.x + dx, pos.y + dy, c, PheromoneType::Danger);
         }
 

@@ -60,7 +60,7 @@ impl App {
         let config = SimConfig::default();
 
         // Initialize pheromone grid
-        let pheromones = PheromoneGrid::new(terrain.width, terrain.height, config.spawn.num_colonies);
+        let pheromones = PheromoneGrid::new(terrain.width, terrain.height, config.spawn.num_colonies, &config.pheromone);
 
         // Initialize water grid
         let mut water = WaterGrid::new(terrain.width, terrain.height);

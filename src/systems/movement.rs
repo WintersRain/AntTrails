@@ -55,7 +55,7 @@ pub fn movement_system(
                 }
             }
             AntState::Fleeing => {
-                match crate::systems::combat::fleeing_movement(pos, pheromones) {
+                match crate::systems::combat::fleeing_movement(pos, pheromones, _config) {
                     Some(dir) => dir,
                     None => random_movement(),
                 }
