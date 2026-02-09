@@ -51,5 +51,5 @@
 | AI-01 | Phase 4: Utility AI Core | Pending |
 | AI-02 | Phase 5: Emergent Specialization | Pending |
 | AI-03 | Phase 6: Colony Intelligence | Pending |
-| POL-01 | Phase 3: Config Centralization | Pending |
+| POL-01 | Phase 3: Config Centralization | Complete |
 | POL-02 | Phase 7: Debug & Tuning Dashboard | Pending |
