@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-05)
 
 **Core value:** Emergent behavior -- ants do things the developer didn't explicitly program. The simulation surprises its creator.
-**Current focus:** Phase 2 complete: Pheromone Communication (3/3 plans done). Ready for Phase 3.
+**Current focus:** Phase 3 in progress: Config Centralization (1/3 plans done).
 
 ## Current Position
 
-Phase: 2 of 7 (Pheromone Communication) -- COMPLETE
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-08 -- Completed 02-03-PLAN.md (Pheromone trail visualization)
+Phase: 3 of 7 (Config Centralization)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-08 -- Completed 03-01-PLAN.md (SimConfig struct and wiring)
 
-Progress: [######..................] 25% (6/24 plans)
+Progress: [#######.....................] 29% (7/24 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 2.5min
-- Total execution time: 0.25 hours
+- Total plans completed: 7
+- Average duration: 2.7min
+- Total execution time: 0.32 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [######..................] 25% (6/24 plans)
 |-------|-------|-------|----------|
 | 01-unfreeze-and-activate | 3/3 | 7min | 2.3min |
 | 02-pheromone-communication | 3/3 | 8min | 2.7min |
+| 03-config-centralization | 1/3 | 6min | 6.0min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (4min), 02-01 (4min), 02-02 (2min), 02-03 (2min)
-- Trend: stable
+- Last 5 plans: 02-01 (4min), 02-02 (2min), 02-03 (2min), 03-01 (6min)
+- Trend: 03-01 longer due to touching 11 files across entire codebase
 
 *Updated after each plan completion*
 
@@ -61,10 +62,13 @@ Recent decisions affecting current work:
 - [02-03]: Default show_pheromones to true so user sees trails immediately -- core visual feedback of Phase 2
 - [02-03]: Pheromone RGB cap at 120 (not 255) preserves foreground terrain character readability
 - [02-03]: Visual threshold 0.05 (vs 0.01 detection) to avoid noisy clutter from diffusion fringes
+- [03-01]: Pass full &SimConfig to system functions (not sub-struct references) to avoid friction when systems need multiple sub-configs
+- [03-01]: Use _config underscore prefix during Plan 01 to suppress unused warnings; Plans 02/03 rename to config as they consume fields
+- [03-01]: PheromoneGrid::diffuse gets &PheromoneConfig (sub-struct) since it's a method on a pheromone-specific type
 
 ### Pending Todos
 
-None yet.
+None.
 
 ### Blockers/Concerns
 
@@ -74,10 +78,10 @@ None yet.
 - ~~Performance: O(N^2) combat loop causes frame drops at 500+ ants~~ RESOLVED in 01-03
 - ~~Risk: Pheromone deposit 0.05/tick with decay 0.001/tick causes saturation (no gradient)~~ RESOLVED in 02-01 (per-type decay, adaptive deposit)
 - ~~Note: app.rs call site for pheromone_deposit_system needs colonies parameter~~ RESOLVED in 02-02
-- Note: Current probability thresholds are magic numbers -- Phase 3 (config centralization) will extract them
+- ~~Note: Current probability thresholds are magic numbers -- Phase 3 (config centralization) will extract them~~ IN PROGRESS: config struct and wiring done in 03-01, constants replacement in 03-02 and 03-03
 
 ## Session Continuity
 
 Last session: 2026-02-08
-Stopped at: Completed 02-03-PLAN.md (Pheromone trail visualization) -- Phase 2 complete
+Stopped at: Completed 03-01-PLAN.md (SimConfig struct and wiring)
 Resume file: None
