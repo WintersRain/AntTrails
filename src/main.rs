@@ -2,6 +2,7 @@ mod app;
 mod camera;
 mod colony;
 mod components;
+mod config;
 mod input;
 mod render;
 mod spatial;
