@@ -1,6 +1,7 @@
 use hecs::World;
 
 use crate::components::{Ant, AntRole, AntState, ColonyMember, Dead, Fighter, Position};
+use crate::config::SimConfig;
 use crate::spatial::SpatialGrid;
 use crate::systems::pheromone::{PheromoneGrid, PheromoneType};
 
@@ -11,7 +12,7 @@ const BASE_DAMAGE: u8 = 10;
 const COMBAT_INTERVAL: u64 = 5;
 
 /// Combat system - ants from different colonies fight when adjacent
-pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64, spatial_grid: &SpatialGrid) {
+pub fn combat_system(world: &mut World, pheromones: &mut PheromoneGrid, tick: u64, spatial_grid: &SpatialGrid, _config: &SimConfig) {
     if tick % COMBAT_INTERVAL != 0 {
         return;
     }
@@ -141,7 +142,7 @@ fn apply_damage(world: &mut World, entity: hecs::Entity, damage: u8) {
 }
 
 /// Soldiers patrol and respond to danger pheromones
-pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid) {
+pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid, _config: &SimConfig) {
     let mut state_changes: Vec<(hecs::Entity, AntState)> = Vec::new();
 
     for (entity, (pos, ant, member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
@@ -169,7 +170,7 @@ pub fn soldier_ai_system(world: &mut World, pheromones: &PheromoneGrid) {
 }
 
 /// Workers flee from enemies
-pub fn flee_system(world: &mut World, pheromones: &PheromoneGrid) {
+pub fn flee_system(world: &mut World, pheromones: &PheromoneGrid, _config: &SimConfig) {
     let mut state_changes: Vec<(hecs::Entity, AntState)> = Vec::new();
 
     for (entity, (pos, ant, _member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {

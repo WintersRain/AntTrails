@@ -1,6 +1,7 @@
 use hecs::World;
 
 use crate::components::{Ant, AntRole, AntState, ColonyMember, Position};
+use crate::config::SimConfig;
 use crate::terrain::{Terrain, TerrainType};
 
 /// Digging speed: lower = slower (1 in N chance per tick)
@@ -10,7 +11,7 @@ const DIG_CHANCE: u8 = 8; // ~12% chance to dig each tick
 const REINFORCE_CHANCE: u8 = 3; // ~33% chance to reinforce a wall
 
 /// Process digging actions for ants in Digging state
-pub fn dig_system(world: &mut World, terrain: &mut Terrain) {
+pub fn dig_system(world: &mut World, terrain: &mut Terrain, _config: &SimConfig) {
     // Collect dig actions
     let mut digs: Vec<(i32, i32)> = Vec::new();
 
@@ -77,7 +78,7 @@ fn reinforce_adjacent(terrain: &mut Terrain, x: i32, y: i32) {
 }
 
 /// AI system to decide when workers should dig
-pub fn dig_ai_system(world: &mut World, terrain: &Terrain) {
+pub fn dig_ai_system(world: &mut World, terrain: &Terrain, _config: &SimConfig) {
     // Collect state changes
     let mut state_changes: Vec<(hecs::Entity, AntState)> = Vec::new();
 

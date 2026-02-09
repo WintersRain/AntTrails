@@ -13,6 +13,7 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 use crate::camera::Camera;
 use crate::colony::ColonyState;
 use crate::components::{Ant, ColonyMember, Position};
+use crate::config::SimConfig;
 use crate::input::Command;
 use crate::render::render_frame;
 use crate::spatial::SpatialGrid;
@@ -23,10 +24,6 @@ use crate::terrain::Terrain;
 
 const TARGET_FPS: u64 = 30;
 const FRAME_DURATION: Duration = Duration::from_millis(1000 / TARGET_FPS);
-const NUM_COLONIES: usize = 3;
-const NUM_FOOD_SOURCES: usize = 15;
-const NUM_APHIDS: usize = 10;
-const NUM_WATER_SOURCES: usize = 5;
 
 pub struct App {
     terminal: Terminal<CrosstermBackend<Stdout>>,
@@ -38,6 +35,7 @@ pub struct App {
     water: WaterGrid,
     spatial_grid: SpatialGrid,
     rain_event: Option<RainEvent>,
+    config: SimConfig,
     running: bool,
     paused: bool,
     tick: u64,
@@ -58,8 +56,11 @@ impl App {
         let seed = fastrand::u32(..);
         let terrain = Terrain::generate(200, 100, seed);
 
+        // Initialize config
+        let config = SimConfig::default();
+
         // Initialize pheromone grid
-        let pheromones = PheromoneGrid::new(terrain.width, terrain.height, NUM_COLONIES);
+        let pheromones = PheromoneGrid::new(terrain.width, terrain.height, config.spawn.num_colonies);
 
         // Initialize water grid
         let mut water = WaterGrid::new(terrain.width, terrain.height);
@@ -68,16 +69,16 @@ impl App {
         let mut world = World::new();
 
         // Create colonies and spawn initial ants
-        let colonies = systems::spawn::spawn_colonies(&mut world, &terrain, NUM_COLONIES);
+        let colonies = systems::spawn::spawn_colonies(&mut world, &terrain, config.spawn.num_colonies);
 
         // Spawn food sources on surface
-        systems::food::spawn_food_sources(&mut world, &terrain, NUM_FOOD_SOURCES);
+        systems::food::spawn_food_sources(&mut world, &terrain, config.food.num_food_sources);
 
         // Spawn aphids underground
-        systems::aphid::spawn_aphids(&mut world, &terrain, NUM_APHIDS);
+        systems::aphid::spawn_aphids(&mut world, &terrain, config.spawn.num_aphids);
 
         // Spawn some initial water in caves
-        systems::water::spawn_water_sources(&mut water, &terrain, NUM_WATER_SOURCES);
+        systems::water::spawn_water_sources(&mut water, &terrain, config.water.num_water_sources);
 
         // Ensure queens have Age component
         systems::lifecycle::ensure_queen_ages(&mut world);
@@ -98,6 +99,7 @@ impl App {
             water,
             spatial_grid,
             rain_event: None,
+            config,
             running: true,
             paused: false,
             tick: 0,
@@ -172,11 +174,11 @@ impl App {
             // === Phase 1: AI & State Updates ===
 
             // Dig AI decides what ants should do
-            systems::dig::dig_ai_system(&mut self.world, &self.terrain);
+            systems::dig::dig_ai_system(&mut self.world, &self.terrain, &self.config);
 
             // Combat AI - soldiers respond to danger, workers flee
-            systems::combat::soldier_ai_system(&mut self.world, &self.pheromones);
-            systems::combat::flee_system(&mut self.world, &self.pheromones);
+            systems::combat::soldier_ai_system(&mut self.world, &self.pheromones, &self.config);
+            systems::combat::flee_system(&mut self.world, &self.pheromones, &self.config);
 
             // === Phase 2: Movement ===
             systems::movement::movement_system(
@@ -184,12 +186,13 @@ impl App {
                 &self.terrain,
                 &self.pheromones,
                 &self.colonies,
+                &self.config,
             );
 
             // === Phase 3: Actions ===
 
             // Digging (ants in dig state remove soil)
-            systems::dig::dig_system(&mut self.world, &mut self.terrain);
+            systems::dig::dig_system(&mut self.world, &mut self.terrain, &self.config);
 
             // Foraging (pickup and deposit food)
             systems::food::foraging_system(
@@ -197,57 +200,58 @@ impl App {
                 &self.terrain,
                 &self.pheromones,
                 &mut self.colonies,
+                &self.config,
             );
-            systems::food::check_deposit(&mut self.world, &self.colonies);
+            systems::food::check_deposit(&mut self.world, &self.colonies, &self.config);
 
             // Combat (every 5 ticks)
-            systems::combat::combat_system(&mut self.world, &mut self.pheromones, self.tick, &self.spatial_grid);
+            systems::combat::combat_system(&mut self.world, &mut self.pheromones, self.tick, &self.spatial_grid, &self.config);
 
             // Aphid farming
-            systems::aphid::aphid_system(&mut self.world, &mut self.colonies);
+            systems::aphid::aphid_system(&mut self.world, &mut self.colonies, &self.config);
 
             // === Phase 4: Pheromones ===
             // 1. Decay first (reduces all values per-tick with type-specific rates)
-            systems::pheromone::pheromone_decay_system(&mut self.pheromones);
+            systems::pheromone::pheromone_decay_system(&mut self.pheromones, &self.config);
 
             // 2. Diffuse (spread gradients spatially to create detectable trails)
-            self.pheromones.diffuse();
+            self.pheromones.diffuse(&self.config.pheromone);
 
             // 3. Then deposit new pheromone from ant positions (adaptive rates)
             systems::pheromone::pheromone_deposit_system(
-                &self.world, &mut self.pheromones, &self.colonies,
+                &self.world, &mut self.pheromones, &self.colonies, &self.config,
             );
 
             // === Phase 5: Lifecycle ===
-            systems::lifecycle::lifecycle_system(&mut self.world, &mut self.colonies, self.tick);
+            systems::lifecycle::lifecycle_system(&mut self.world, &mut self.colonies, self.tick, &self.config);
 
             // Food regrow
-            systems::food::food_regrow_system(&mut self.world, self.tick);
+            systems::food::food_regrow_system(&mut self.world, self.tick, &self.config);
 
             // === Phase 6: Environmental Hazards ===
 
-            // Cave-ins (every 10 ticks)
-            if self.tick % 10 == 0 {
-                systems::hazard::cave_in_system(&mut self.terrain, &mut self.world);
+            // Cave-ins (every N ticks)
+            if self.tick % self.config.hazard.cave_in_interval == 0 {
+                systems::hazard::cave_in_system(&mut self.terrain, &mut self.world, &self.config);
             }
 
-            // Water physics (every 3 ticks for performance)
-            if self.tick % 3 == 0 {
+            // Water physics (every N ticks for performance)
+            if self.tick % self.config.water.water_flow_interval == 0 {
                 systems::water::calculate_pressure(&mut self.water, &self.terrain);
                 systems::water::water_flow_system(&mut self.water, &self.terrain);
             }
 
-            // Evaporation (every 50 ticks)
-            if self.tick % 50 == 0 {
-                systems::water::evaporation_system(&mut self.water, &self.terrain);
+            // Evaporation (every N ticks)
+            if self.tick % self.config.water.evaporation_interval == 0 {
+                systems::water::evaporation_system(&mut self.water, &self.terrain, &self.config);
             }
 
             // Rain (check every tick, rare event)
-            systems::water::rain_system(&mut self.water, &self.terrain, &mut self.rain_event);
+            systems::water::rain_system(&mut self.water, &self.terrain, &mut self.rain_event, &self.config);
 
             // Drowning
-            systems::water::drowning_system(&mut self.world, &self.water);
-            systems::water::flee_flood_system(&mut self.world, &self.water);
+            systems::water::drowning_system(&mut self.world, &self.water, &self.config);
+            systems::water::flee_flood_system(&mut self.world, &self.water, &self.config);
 
             // === Phase 7: Cleanup ===
             systems::hazard::cleanup_dead(&mut self.world);

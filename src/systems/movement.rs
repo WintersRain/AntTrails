@@ -2,6 +2,7 @@ use hecs::World;
 
 use crate::colony::ColonyState;
 use crate::components::{Ant, AntRole, AntState, ColonyMember, Position};
+use crate::config::SimConfig;
 use crate::systems::pheromone::PheromoneGrid;
 use crate::terrain::{Terrain, TerrainType};
 
@@ -11,6 +12,7 @@ pub fn movement_system(
     terrain: &Terrain,
     pheromones: &PheromoneGrid,
     colonies: &[ColonyState],
+    _config: &SimConfig,
 ) {
     // Collect moves to apply (can't mutate while iterating)
     let mut moves: Vec<(hecs::Entity, i32, i32)> = Vec::new();

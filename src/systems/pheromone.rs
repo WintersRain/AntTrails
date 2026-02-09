@@ -4,6 +4,7 @@ use hecs::World;
 
 use crate::colony::ColonyState;
 use crate::components::{Ant, AntState, ColonyMember, Position};
+use crate::config::{PheromoneConfig, SimConfig};
 use crate::terrain::Terrain;
 
 /// Maximum pheromone strength
@@ -115,7 +116,7 @@ impl PheromoneGrid {
     }
 
     /// Spread pheromone to 8 neighbors using double-buffer swap
-    pub fn diffuse(&mut self) {
+    pub fn diffuse(&mut self, _config: &PheromoneConfig) {
         // Zero the buffer
         for v in self.buffer.iter_mut() {
             *v = 0.0;
@@ -237,13 +238,13 @@ impl PheromoneGrid {
 }
 
 /// Decay all pheromones
-pub fn pheromone_decay_system(pheromones: &mut PheromoneGrid) {
+pub fn pheromone_decay_system(pheromones: &mut PheromoneGrid, _config: &SimConfig) {
     pheromones.decay_all();
 }
 
 /// Ants deposit pheromones as they walk
 pub fn pheromone_deposit_system(
-    world: &World, pheromones: &mut PheromoneGrid, colonies: &[ColonyState],
+    world: &World, pheromones: &mut PheromoneGrid, colonies: &[ColonyState], _config: &SimConfig,
 ) {
     for (_entity, (pos, ant, member)) in world.query::<(&Position, &Ant, &ColonyMember)>().iter() {
         let colony_id = member.colony_id;

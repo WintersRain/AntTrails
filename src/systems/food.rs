@@ -2,6 +2,7 @@ use hecs::World;
 
 use crate::colony::ColonyState;
 use crate::components::{Ant, AntRole, AntState, CarryItem, Carrying, ColonyMember, FoodSource, Position};
+use crate::config::SimConfig;
 use crate::systems::pheromone::{PheromoneGrid, PheromoneType};
 use crate::terrain::Terrain;
 
@@ -44,7 +45,7 @@ pub fn spawn_food_sources(world: &mut World, terrain: &Terrain, count: usize) {
 }
 
 /// Regrow food at existing food sources
-pub fn food_regrow_system(world: &mut World, tick: u64) {
+pub fn food_regrow_system(world: &mut World, tick: u64, _config: &SimConfig) {
     if tick % FOOD_REGROW_INTERVAL != 0 {
         return;
     }
@@ -62,6 +63,7 @@ pub fn foraging_system(
     _terrain: &Terrain,
     _pheromones: &PheromoneGrid,
     colonies: &mut [ColonyState],
+    _config: &SimConfig,
 ) {
     // Collect food source positions and amounts
     let mut food_positions: Vec<(i32, i32, hecs::Entity)> = Vec::new();
@@ -213,7 +215,7 @@ pub fn foraging_movement(
 }
 
 /// Check if ant has deposited food and should stop carrying
-pub fn check_deposit(world: &mut World, colonies: &[ColonyState]) {
+pub fn check_deposit(world: &mut World, colonies: &[ColonyState], _config: &SimConfig) {
     let mut to_stop_carrying: Vec<hecs::Entity> = Vec::new();
 
     for (entity, (pos, ant, member, _carrying)) in
